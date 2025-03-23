@@ -4,14 +4,14 @@ env:
     secret: gemini-api-key
   # Get these values from the Firebase console
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
-    value: "AIzaSyCMsHhNCwpmw89jscjIQ9qE1hcFOMY3hEk"
+    value: AIzaSyCMsHhNCwpmw89jscjIQ9qE1hcFOMY3hEk
   - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-    value: "umespexarna-tickster.firebaseapp.com"
+    value: umespexarna-tickster.firebaseapp.com
   - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
-    value: "umespexarna-tickster"
+    value: umespexarna-tickster
   - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
-    value: "umespexarna-tickster.firebasestorage.app"
+    value: umespexarna-tickster.firebasestorage.app
   - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-    value: "260226931316"
+    value: 260226931316
   - variable: NEXT_PUBLIC_FIREBASE_APP_ID
-    value: "1:260226931316:web:3928ba6f79f83ef6250f21"
+    value: 1:260226931316:web:3928ba6f79f83ef6250f21
