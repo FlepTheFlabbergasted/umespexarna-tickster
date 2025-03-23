@@ -98,13 +98,13 @@ exports.addShowAndTicketsSoldRow = onSchedule(
             const parsedData = JSON.parse(rawData);
             const showsAndTicketsSold = parsedData
               .filter(
-                (data: any) =>
+                (data) =>
                   data.name.startsWith(`${SHOW_NAME_PREFIX} - Torsdag`) ||
                   data.name.startsWith(`${SHOW_NAME_PREFIX} - Fredag`) ||
                   data.name.startsWith(`${SHOW_NAME_PREFIX} - Lördag`) ||
                   data.name.startsWith(`${SHOW_NAME_PREFIX} - Söndag`)
               )
-              .map((data: any) => ({
+              .map((data) => ({
                 name: data.name,
                 ticketsSold: data.sales.soldQtyNet,
               }));
@@ -123,7 +123,7 @@ exports.addShowAndTicketsSoldRow = onSchedule(
               });
 
             // res.json({ msg: 'New row added', showAndTicketsSoldRow });
-          } catch (error: any) {
+          } catch (error) {
             logger.error(error.message);
           }
         });
