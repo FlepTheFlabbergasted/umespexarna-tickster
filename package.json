@@ -11,6 +11,8 @@
   "dependencies": {
     "@firebase/firestore": "^4.7.10",
     "firebase": "^11.5.0",
+    "firebase-admin": "^13.2.0",
+    "firebase-functions": "^6.3.2",
     "next": "15.2.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
