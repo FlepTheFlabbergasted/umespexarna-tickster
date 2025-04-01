@@ -61,37 +61,37 @@ exports.getSales = onRequest(async (req, res) => {
   res.send(collectionData);
 });
 
-exports.reWrite2025Collection = onRequest(async (_req, res) => {
-  await db
-    .collection(COLLECTION_NAME)
-    .get()
-    .then((querySnapshot) =>
-      querySnapshot.forEach(function (doc) {
-        const data = doc.data();
+// exports.reWrite2025Collection = onRequest(async (_req, res) => {
+//   await db
+//     .collection(COLLECTION_NAME)
+//     .get()
+//     .then((querySnapshot) =>
+//       querySnapshot.forEach(function (doc) {
+//         const data = doc.data();
 
-        if (!Object.keys(data)[0].includes('12:01')) {
-          doc.ref.delete();
-        } else {
-          doc.ref.set({
-            ...Object.entries(data).flatMap(([key, val]) => ({
-              date: DateTime.fromJSDate(new Date(key)).toFormat('LLL dd'),
-              millis: DateTime.fromJSDate(new Date(key)).toMillis(),
-              ...val.showsAndTicketsSold.reduce(
-                (acc: any, curr: any) => ({
-                  ...acc,
-                  [curr.name.replace(`${SHOW_NAME_PREFIX} - `, '')]:
-                    curr.ticketsSold,
-                }),
-                {}
-              ),
-            }))[0],
-          });
-        }
-      })
-    );
+//         if (!Object.keys(data)[0].includes('12:01')) {
+//           doc.ref.delete();
+//         } else {
+//           doc.ref.set({
+//             ...Object.entries(data).flatMap(([key, val]) => ({
+//               date: DateTime.fromJSDate(new Date(key)).toFormat('LLL dd'),
+//               millis: DateTime.fromJSDate(new Date(key)).toMillis(),
+//               ...val.showsAndTicketsSold.reduce(
+//                 (acc: any, curr: any) => ({
+//                   ...acc,
+//                   [curr.name.replace(`${SHOW_NAME_PREFIX} - `, '')]:
+//                     curr.ticketsSold,
+//                 }),
+//                 {}
+//               ),
+//             }))[0],
+//           });
+//         }
+//       })
+//     );
 
-  res.send('Done!');
-});
+//   res.send('Done!');
+// });
 
 // Manually run the task here https://console.cloud.google.com/cloudscheduler
 exports.addShowAndTicketsSoldRow = onSchedule('every day 12:00', async () => {
