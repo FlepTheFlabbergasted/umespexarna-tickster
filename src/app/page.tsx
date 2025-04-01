@@ -106,6 +106,9 @@ export default function Home() {
             'Lördag 18:00',
             'Söndag 15:00',
           ]}
+          xAxisLabel="Dag"
+          yAxisLabel="Biljetter sålda"
+          maxValue={400}
           onValueChange={(v) => console.log(v)}
         />
       </main>
