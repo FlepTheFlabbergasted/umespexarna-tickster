@@ -1,4 +1,6 @@
 // Tremor LineChart [v0.3.2]
+// https://tremor.so/docs/visualizations/line-chart
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 'use client';
