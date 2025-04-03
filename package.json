@@ -7,8 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "deploy": "npx firebase deploy",
-    "predeploy": "next build && next export"
+    "deploy": "npx firebase deploy"
   },
   "dependencies": {
     "@firebase/firestore": "^4.7.10",
