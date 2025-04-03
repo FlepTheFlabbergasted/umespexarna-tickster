@@ -23,6 +23,11 @@ const TICKSTER_SALES_API_URL =
 const COLLECTION_NAME = '2025';
 const SHOW_NAME_PREFIX = 'Alcatraz';
 
+// GMT+0100 (Central European Time, Standard Time, winter)
+// GMT+0200 (Central European Summer Time)
+const START_DATE = new Date('2025-02-28T00:00:00+01:00'); // Biljetsläpp
+const END_DATE = new Date('2025-04-13T23:59:59+02:00');
+
 initializeApp();
 setGlobalOptions({ region: 'europe-west3' });
 
@@ -94,73 +99,88 @@ exports.getSales = onRequest(async (req, res) => {
 // });
 
 // Manually run the task here https://console.cloud.google.com/cloudscheduler
-exports.addShowAndTicketsSoldRow = onSchedule('every day 12:00', async () => {
-  https
-    .get(TICKSTER_SALES_API_URL, async (incomingHttpMsg) => {
-      const { statusCode } = incomingHttpMsg;
-      const contentType = incomingHttpMsg.headers['content-type'];
+exports.addShowAndTicketsSoldRow = onSchedule(
+  { schedule: 'every day 12:00', timeZone: 'Europe/Stockholm' },
+  async () => {
+    const now = new Date();
 
-      let error;
-      // Any 2xx status code signals a successful response but
-      // here we're only checking for 200.
-      if (statusCode !== 200) {
-        error = new Error('Request Failed.\n' + `Status Code: ${statusCode}`);
-      } else if (!/^application\/json/.test(contentType || '')) {
-        error = new Error(
-          'Invalid content-type.\n' +
-            `Expected application/json but received ${contentType}`
-        );
-      }
+    // Only run if within the date range
+    if (!(now >= START_DATE && now <= END_DATE)) {
+      logger.info(
+        'Skipping function execution. Out of valid date range.',
+        START_DATE,
+        END_DATE
+      );
+      return;
+    }
 
-      if (error) {
-        logger.error(error.message);
-        // Consume response data to free up memory
-        incomingHttpMsg.resume();
-        return;
-      }
+    https
+      .get(TICKSTER_SALES_API_URL, async (incomingHttpMsg) => {
+        const { statusCode } = incomingHttpMsg;
+        const contentType = incomingHttpMsg.headers['content-type'];
 
-      incomingHttpMsg.setEncoding('utf8');
-      let rawData = '';
-      incomingHttpMsg.on('data', (chunk) => {
-        rawData += chunk;
-      });
-
-      incomingHttpMsg.on('end', async () => {
-        try {
-          const parsedData = JSON.parse(rawData);
-          const showsAndTicketsSold = parsedData
-            .filter(
-              (data: any) =>
-                data.name.startsWith(`${SHOW_NAME_PREFIX} - Torsdag`) ||
-                data.name.startsWith(`${SHOW_NAME_PREFIX} - Fredag`) ||
-                data.name.startsWith(`${SHOW_NAME_PREFIX} - Lördag`) ||
-                data.name.startsWith(`${SHOW_NAME_PREFIX} - Söndag`)
-            )
-            .reduce(
-              (obj: any, data: any) => ({
-                ...obj,
-                [data.name.replace(`${SHOW_NAME_PREFIX} - `, '')]:
-                  data.sales.soldQtyNet,
-              }),
-              {}
-            );
-
-          const newCollection = {
-            date: DateTime.now().toFormat('LLL dd'),
-            millis: DateTime.now().toMillis(),
-            ...showsAndTicketsSold,
-          };
-
-          await getFirestore().collection(COLLECTION_NAME).add(newCollection);
-
-          // If calling manually
-          // res.json(newCollection);
-        } catch (error: any) {
-          logger.error(error.message);
+        let error;
+        // Any 2xx status code signals a successful response but
+        // here we're only checking for 200.
+        if (statusCode !== 200) {
+          error = new Error('Request Failed.\n' + `Status Code: ${statusCode}`);
+        } else if (!/^application\/json/.test(contentType || '')) {
+          error = new Error(
+            'Invalid content-type.\n' +
+              `Expected application/json but received ${contentType}`
+          );
         }
+
+        if (error) {
+          logger.error(error.message);
+          // Consume response data to free up memory
+          incomingHttpMsg.resume();
+          return;
+        }
+
+        incomingHttpMsg.setEncoding('utf8');
+        let rawData = '';
+        incomingHttpMsg.on('data', (chunk) => {
+          rawData += chunk;
+        });
+
+        incomingHttpMsg.on('end', async () => {
+          try {
+            const parsedData = JSON.parse(rawData);
+            const showsAndTicketsSold = parsedData
+              .filter(
+                (data: any) =>
+                  data.name.startsWith(`${SHOW_NAME_PREFIX} - Torsdag`) ||
+                  data.name.startsWith(`${SHOW_NAME_PREFIX} - Fredag`) ||
+                  data.name.startsWith(`${SHOW_NAME_PREFIX} - Lördag`) ||
+                  data.name.startsWith(`${SHOW_NAME_PREFIX} - Söndag`)
+              )
+              .reduce(
+                (obj: any, data: any) => ({
+                  ...obj,
+                  [data.name.replace(`${SHOW_NAME_PREFIX} - `, '')]:
+                    data.sales.soldQtyNet,
+                }),
+                {}
+              );
+
+            const newCollection = {
+              date: DateTime.now().toFormat('LLL dd'),
+              millis: DateTime.now().toMillis(),
+              ...showsAndTicketsSold,
+            };
+
+            await getFirestore().collection(COLLECTION_NAME).add(newCollection);
+
+            // If calling manually
+            // res.json(newCollection);
+          } catch (error: any) {
+            logger.error(error.message);
+          }
+        });
+      })
+      .on('error', (error) => {
+        logger.error(error.message);
       });
-    })
-    .on('error', (error) => {
-      logger.error(error.message);
-    });
-});
+  }
+);
