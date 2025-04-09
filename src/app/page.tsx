@@ -2,74 +2,89 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { LineChart, TooltipProps } from '@/components/LineChart';
 import { collection, getDocs } from '@firebase/firestore';
 import { useEffect, useState } from 'react';
+import '../lib/array.prototypes';
 import { db } from '../lib/firebase.config';
 
-import { LineChart } from '@/components/LineChart';
+const MAX_VALUE = 400;
 
-// const chartdata = [
+const Tooltip = ({ payload, active, label }: TooltipProps) => {
+  if (!active || !payload || payload.length === 0) return null;
+
+  const data = payload
+    .map((item) => ({
+      category: item.category,
+      value: item.value,
+      percentage: ((item.value / MAX_VALUE) * 100).toFixed(0),
+      color: item.color,
+    }))
+    // BUG: When using CustomTooltip the data is duplicated
+    // The fix from here does not work https://github.com/recharts/recharts/issues/1625
+    .removeDuplicates((a, b) => a.category === b.category);
+
+  console.log(data);
+
+  return (
+    <>
+      <div className="mb-1 w-60 rounded-md border border-gray-500/10 bg-blue-500 px-4 py-1.5 text-sm shadow-md dark:border-gray-200/30 dark:bg-[#040712]">
+        <p className="flex items-center justify-between">
+          <span className="text-gray-50 dark:text-gray-50">Datum</span>
+          <span className="font-medium text-gray-50 dark:text-gray-50">
+            {label}
+          </span>
+        </p>
+      </div>
+
+      <div className="space-y-1 rounded-md border border-gray-500/10 bg-white px-4 py-2 text-sm shadow-md dark:border-gray-200/30 dark:bg-[#040712]">
+        {data.map((item, index) => (
+          <div key={index} className="flex items-center space-x-2.5">
+            <div className="flex w-full justify-between">
+              <div className="flex items-center space-x-1">
+                <span
+                  className={`h-[3px] w-3.5 shrink-0 rounded-full bg-${item.color}-500 opacity-100`}
+                  aria-hidden="true"
+                ></span>
+                <span className="text-gray-300">{item.category}</span>
+              </div>
+
+              <div className="flex items-center space-x-1">
+                <span className="font-medium text-gray-900 dark:text-gray-50">
+                  {item.value}
+                </span>
+                <span className="text-gray-500 dark:text-gray-500">
+                  ({item.percentage}&#37;)
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+};
+
+// [
 //   {
-//     date: 'Jan 23',
-//     SolarPanels: 2890,
-//     Inverters: 2338,
+//       "date": "Mar 23",
+//       "millis": 1742731268000,
+//       "Lördag 13:00": 13,
+//       "Lördag 18:00": 77,
+//       "Fredag 19:00": 50,
+//       "Torsdag 19:00": 77,
+//       "Söndag 15:00": 8
 //   },
 //   {
-//     date: 'Feb 23',
-//     SolarPanels: 2756,
-//     Inverters: 2103,
+//       "date": "Mar 24",
+//       "millis": 1742817667000,
+//       "Lördag 18:00": 87,
+//       "Fredag 19:00": 50,
+//       "Lördag 13:00": 18,
+//       "Torsdag 19:00": 80,
+//       "Söndag 15:00": 8
 //   },
-//   {
-//     date: 'Mar 23',
-//     SolarPanels: 3322,
-//     Inverters: 2194,
-//   },
-//   {
-//     date: 'Apr 23',
-//     SolarPanels: 3470,
-//     Inverters: 2108,
-//   },
-//   {
-//     date: 'May 23',
-//     SolarPanels: 3475,
-//     Inverters: 1812,
-//   },
-//   {
-//     date: 'Jun 23',
-//     SolarPanels: 3129,
-//     Inverters: 1726,
-//   },
-//   {
-//     date: 'Jul 23',
-//     SolarPanels: 3490,
-//     Inverters: 1982,
-//   },
-//   {
-//     date: 'Aug 23',
-//     SolarPanels: 2903,
-//     Inverters: 2012,
-//   },
-//   {
-//     date: 'Sep 23',
-//     SolarPanels: 2643,
-//     Inverters: 2342,
-//   },
-//   {
-//     date: 'Oct 23',
-//     SolarPanels: 2837,
-//     Inverters: 2473,
-//   },
-//   {
-//     date: 'Nov 23',
-//     SolarPanels: 2954,
-//     Inverters: 3848,
-//   },
-//   {
-//     date: 'Dec 23',
-//     SolarPanels: 3239,
-//     Inverters: 3736,
-//   },
-// ];
+// ]
 
 export default function Home() {
   const [items, setItems] = useState([] as any[]);
@@ -86,6 +101,7 @@ export default function Home() {
       //     DateTime.fromFormat(data.date, 'LLL dd') ? 1 : -1
       //   )
       // );
+      console.log(collectionData);
       setItems(collectionData);
     };
 
@@ -106,10 +122,11 @@ export default function Home() {
             'Lördag 18:00',
             'Söndag 15:00',
           ]}
-          xAxisLabel="Dag"
+          xAxisLabel="Datum"
           yAxisLabel="Biljetter sålda"
-          maxValue={400}
+          maxValue={MAX_VALUE}
           onValueChange={(v) => console.log(v)}
+          customTooltip={Tooltip}
         />
       </main>
     </div>
