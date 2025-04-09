@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react';
 import '../lib/array.prototypes';
 import { db } from '../lib/firebase.config';
 
+const NR_SHOWS = 5;
 const MAX_VALUE = 400;
 
 const Tooltip = ({ payload, active, label }: TooltipProps) => {
@@ -24,7 +25,10 @@ const Tooltip = ({ payload, active, label }: TooltipProps) => {
     // The fix from here does not work https://github.com/recharts/recharts/issues/1625
     .removeDuplicates((a, b) => a.category === b.category);
 
-  console.log(data);
+  const totalValue = data.reduce((tot, item) => tot + item.value, 0);
+  const totalPercentage = ((totalValue / (MAX_VALUE * NR_SHOWS)) * 100).toFixed(
+    0
+  );
 
   return (
     <>
@@ -60,6 +64,21 @@ const Tooltip = ({ payload, active, label }: TooltipProps) => {
             </div>
           </div>
         ))}
+
+        <div className="mt-2 flex items-center space-x-2.5">
+          <div className="flex w-full justify-between">
+            <span className="text-gray-300">Totalt</span>
+
+            <div className="flex items-center space-x-1">
+              <span className="font-medium text-gray-900 dark:text-gray-50">
+                {totalValue}
+              </span>
+              <span className="text-gray-500 dark:text-gray-500">
+                ({totalPercentage}&#37;)
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
     </>
   );
