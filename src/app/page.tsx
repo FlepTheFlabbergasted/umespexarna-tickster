@@ -9,7 +9,7 @@ import '../lib/array.prototypes';
 import { db } from '../lib/firebase.config';
 
 const NR_SHOWS = 5;
-const MAX_VALUE = 400;
+const MAX_VALUE = 340;
 
 const Tooltip = ({ payload, active, label }: TooltipProps) => {
   if (!active || !payload || payload.length === 0) return null;
