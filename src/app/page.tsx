@@ -115,12 +115,6 @@ export default function Home() {
         .map((doc) => doc.data())
         .sort((a: any, b) => (a.millis > b.millis ? 1 : -1));
 
-      // console.log(
-      //   collectionData.sort((data: any) =>
-      //     DateTime.fromFormat(data.date, 'LLL dd') ? 1 : -1
-      //   )
-      // );
-      console.log(collectionData);
       setItems(collectionData);
     };
 
@@ -130,7 +124,7 @@ export default function Home() {
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-4 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
       <main className="w-full lg:max-w-3/4  flex flex-col gap-[32px] row-start-2 items-center">
-        <h1 className="text-2xl">Umespexarna 2025 - Alcatraz</h1>
+        <h1 className="text-2xl text-center">Umespexarna 2025 - Alcatraz</h1>
         <LineChart
           data={items}
           index="date"
@@ -144,7 +138,7 @@ export default function Home() {
           xAxisLabel="Datum"
           yAxisLabel="Biljetter sålda"
           maxValue={MAX_VALUE}
-          onValueChange={(v) => console.log(v)}
+          onValueChange={(v) => v}
           customTooltip={Tooltip}
         />
       </main>
