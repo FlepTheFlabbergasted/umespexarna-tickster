@@ -26,7 +26,7 @@ const SHOW_NAME_PREFIX = 'Alcatraz';
 // GMT+0100 (Central European Time, Standard Time, winter)
 // GMT+0200 (Central European Summer Time)
 const START_DATE = new Date('2025-02-28T00:00:00+01:00'); // Biljetsläpp
-const END_DATE = new Date('2025-04-14T23:59:59+02:00'); // Slutdatum + 1 dag
+const END_DATE = new Date('2025-04-13T23:59:59+02:00');
 
 initializeApp();
 setGlobalOptions({ region: 'europe-west3' });
