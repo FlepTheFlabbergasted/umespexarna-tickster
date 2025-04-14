@@ -7,7 +7,7 @@
  * - https://firebase.google.com/docs/functions/schedule-functions?gen=2nd
  *
  * - https://firebase.google.com/codelabs/firebase-nextjs#0
- *
+ *,
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 import { initializeApp } from 'firebase-admin/app';
@@ -170,10 +170,127 @@ exports.addShowAndTicketsSoldRow = onSchedule(
               ...showsAndTicketsSold,
             };
 
-            await getFirestore().collection(COLLECTION_NAME).add(newCollection);
+            const collectionRef = await db.collection(COLLECTION_NAME); //.add(newCollection);
+            const snapshot = await collectionRef.get();
+            const previousDoc = snapshot.docs.find(
+              (doc) => doc.data().date === newCollection.date
+            );
+
+            if (previousDoc) {
+              console.log(
+                await collectionRef
+                  .doc(previousDoc.id)
+                  .update({ ...newCollection })
+              );
+            } else {
+              console.log('NEEEEW');
+              await collectionRef.add(newCollection);
+            }
 
             // If calling manually
             // res.json(newCollection);
+          } catch (error: any) {
+            logger.error(error.message);
+          }
+        });
+      })
+      .on('error', (error) => {
+        logger.error(error.message);
+      });
+  }
+);
+
+
+// Manually run the task here https://console.cloud.google.com/cloudscheduler
+exports.addShowAndTicketsSoldRowMANUAL = onRequest
+  async (_req,res) => {
+    const now = new Date();
+
+    // Only run if within the date range
+    if (!(now >= START_DATE && now <= END_DATE)) {
+      logger.info(
+        'Skipping function execution. Out of valid date range.',
+        START_DATE,
+        END_DATE
+      );
+      return;
+    }
+
+    https
+      .get(TICKSTER_SALES_API_URL, async (incomingHttpMsg) => {
+        const { statusCode } = incomingHttpMsg;
+        const contentType = incomingHttpMsg.headers['content-type'];
+
+        let error;
+        // Any 2xx status code signals a successful response but
+        // here we're only checking for 200.
+        if (statusCode !== 200) {
+          error = new Error('Request Failed.\n' + `Status Code: ${statusCode}`);
+        } else if (!/^application\/json/.test(contentType || '')) {
+          error = new Error(
+            'Invalid content-type.\n' +
+              `Expected application/json but received ${contentType}`
+          );
+        }
+
+        if (error) {
+          logger.error(error.message);
+          // Consume response data to free up memory
+          incomingHttpMsg.resume();
+          return;
+        }
+
+        incomingHttpMsg.setEncoding('utf8');
+        let rawData = '';
+        incomingHttpMsg.on('data', (chunk) => {
+          rawData += chunk;
+        });
+
+        incomingHttpMsg.on('end', async () => {
+          try {
+            const parsedData = JSON.parse(rawData);
+            const showsAndTicketsSold = parsedData
+              .filter(
+                (data: any) =>
+                  data.name.startsWith(`${SHOW_NAME_PREFIX} - Torsdag`) ||
+                  data.name.startsWith(`${SHOW_NAME_PREFIX} - Fredag`) ||
+                  data.name.startsWith(`${SHOW_NAME_PREFIX} - Lördag`) ||
+                  data.name.startsWith(`${SHOW_NAME_PREFIX} - Söndag`)
+              )
+              .reduce(
+                (obj: any, data: any) => ({
+                  ...obj,
+                  [data.name.replace(`${SHOW_NAME_PREFIX} - `, '')]:
+                    data.sales.soldQtyNet,
+                }),
+                {}
+              );
+
+            const newCollection = {
+              date: DateTime.now().toFormat('LLL dd'),
+              millis: DateTime.now().toMillis(),
+              ...showsAndTicketsSold,
+            };
+
+            const collectionRef = await db.collection(COLLECTION_NAME); //.add(newCollection);
+            const snapshot = await collectionRef.get();
+            const previousDoc = snapshot.docs.find(
+              (doc) => doc.data().date === newCollection.date
+            );
+
+            if (previousDoc) {
+              console.log(
+                await collectionRef
+                  .doc(previousDoc.id)
+                  .update({ ...newCollection })
+              );
+            } else {
+              console.log('NEEEEW');
+              await collectionRef.add(newCollection);
+            }
+
+            // If calling manually
+            res.json(newCollection);
           } catch (error: any) {
             logger.error(error.message);
           }
