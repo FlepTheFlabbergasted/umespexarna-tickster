@@ -7,7 +7,7 @@
  * - https://firebase.google.com/docs/functions/schedule-functions?gen=2nd
  *
  * - https://firebase.google.com/codelabs/firebase-nextjs#0
- *,
+ *
  * See a full list of supported triggers at https://firebase.google.com/docs/functions
  */
 import { initializeApp } from 'firebase-admin/app';
