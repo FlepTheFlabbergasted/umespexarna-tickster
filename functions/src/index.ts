@@ -26,7 +26,7 @@ const SHOW_NAME_PREFIX = 'Alcatraz';
 // GMT+0100 (Central European Time, Standard Time, winter)
 // GMT+0200 (Central European Summer Time)
 const START_DATE = new Date('2025-02-28T00:00:00+01:00'); // Biljetsläpp
-const END_DATE = new Date('2025-04-13T23:59:59+02:00');
+const END_DATE = new Date('2025-04-14T23:59:59+02:00'); // Slutdatum + 1 dag
 
 initializeApp();
 setGlobalOptions({ region: 'europe-west3' });
@@ -100,7 +100,10 @@ exports.getSales = onRequest(async (req, res) => {
 
 // Manually run the task here https://console.cloud.google.com/cloudscheduler
 exports.addShowAndTicketsSoldRow = onSchedule(
-  { schedule: 'every day 12:00', timeZone: 'Europe/Stockholm' },
+  {
+    schedule: 'every hour from 08:00 to 00:00',
+    timeZone: 'Europe/Stockholm',
+  },
   async () => {
     const now = new Date();
 
@@ -170,7 +173,21 @@ exports.addShowAndTicketsSoldRow = onSchedule(
               ...showsAndTicketsSold,
             };
 
-            await getFirestore().collection(COLLECTION_NAME).add(newCollection);
+            const collectionRef = db.collection(COLLECTION_NAME);
+            const snapshot = await collectionRef.get();
+            const previousDoc = snapshot.docs.find(
+              (doc) => doc.data().date === newCollection.date
+            );
+
+            if (previousDoc) {
+              console.log(
+                await collectionRef
+                  .doc(previousDoc.id)
+                  .update({ ...newCollection })
+              );
+            } else {
+              await collectionRef.add(newCollection);
+            }
 
             // If calling manually
             // res.json(newCollection);
