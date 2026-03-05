@@ -14,7 +14,6 @@ import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { logger, setGlobalOptions } from 'firebase-functions';
 import { onRequest } from 'firebase-functions/https';
-import { onSchedule } from 'firebase-functions/scheduler';
 import https from 'https'; // Node.js
 import { DateTime } from 'luxon';
 
@@ -29,43 +28,37 @@ const db = getFirestore();
 
 const PRODUCTION_COLLECTION_NAME = 'productions';
 const TICKET_SALES_COLLECTION_NAME = 'ticketSales';
-
-const COLLECTION_MAP = {
-  2025: {
-    name: 'Alcatraz',
-    year: 2025,
-    ticksterSalesApiUrl:
-      'https://manager.tickster.com/Statistics/SalesTracker/Api.ashx?keys=CEFA5J,4CG8L2',
-    // GMT+0100 (Central European Time, Standard Time, winter)
-    // GMT+0200 (Central European Summer Time)
-    startDate: new Date('2025-02-28T00:00:00+01:00'), // Biljetsläpp
-    endDate: new Date('2025-04-13T23:59:59+02:00'),
-    ticketSales: [],
-  },
-  // 2026: {
-  //   name: 'Picasso',
-  //   year: 2026,
-  //   ticksterSalesApiUrl:
-  //     'https://manager.tickster.com/Statistics/SalesTracker/Api.ashx?keys=',
-  //   startDate: new Date('2026-03-01T00:00:00+01:00'), // Biljetsläpp
-  //   endDate: new Date('2026-04-26T23:59:59+02:00'),
-  //   ticketSales: [],
-  // },
+const SHOW_DAYS = ['Torsdag', 'Fredag', 'Lördag', 'Söndag'];
+const DAYS_TRANSLATIONS_ENG_SWE = {
+  Monday: 'Måndag',
+  Tuesday: 'Tisdag',
+  Wednesday: 'Onsdag',
+  Thursday: 'Torsdag',
+  Friday: 'Fredag',
+  Saturday: 'Lördag',
+  Sunday: 'Söndag',
 };
 
 //==========================================================//
 //==========================================================//
 //==========================================================//
 
+export interface ShowsAndSalePoint {
+  ordinal: number; // 0
+  label: string; // Apr 04
+  ticketSales: number; // 999
+}
+
 export interface TicketSaleDataPoint {
+  label: string; // Apr 04
+  date: string; // 2025-04-04
   // 'Torsdag 19:00': number,
   // 'Fredag 19:00': number,
   // 'Lördag 13:00': number,
   // 'Lördag 18:00': number,
   // 'Söndag 15:00': number,
-  showsAndSales: [{ ordinal: number; label: string; ticketSales: number }];
-  date: string; // Apr 04
-  millis: number; // 213313442
+  showsAndSales: ShowsAndSalePoint[];
+  totalSales: number; // 999
 }
 
 export interface Production {
@@ -82,6 +75,7 @@ export interface Production {
 //==========================================================//
 //                       Get Sales                          //
 //==========================================================//
+// http://127.0.0.1:5001/umespexarna-tickster/europe-west3/getSales?year=2025
 exports.getSales = onRequest(async (req, res) => {
   const year = req.query.year?.toString();
 
@@ -103,7 +97,7 @@ exports.getSales = onRequest(async (req, res) => {
 
     const ticketSalesSnapshot = await productionRef
       .collection(TICKET_SALES_COLLECTION_NAME)
-      .orderBy('millis')
+      .orderBy('date')
       .get();
 
     if (ticketSalesSnapshot.empty) {
@@ -126,261 +120,153 @@ exports.getSales = onRequest(async (req, res) => {
   }
 });
 
-// Manually run the task here https://console.cloud.google.com/cloudscheduler
 //==========================================================//
 //              Add Show and Tickets Sold Row               //
 //==========================================================//
-exports.addShowAndTicketsSoldRow = onSchedule(
-  {
-    schedule: 'every hour from 08:00 to 00:00',
-    timeZone: 'Europe/Stockholm',
-  },
-  async () => {
-    const now = new Date();
+//
+// Manually run the task here https://console.cloud.google.com/cloudscheduler
+exports.addShowAndTicketsSoldRow = onRequest(async (_req, _res) => {
+  // exports.addShowAndTicketsSoldRow = onSchedule(
+  //   {
+  //     schedule: 'every hour from 08:00 to 00:00',
+  //     timeZone: 'Europe/Stockholm',
+  //   },
+  //   async () => {
+  try {
+    // Find the latest production by year
+    const productionsSnapshot = await db
+      .collection(PRODUCTION_COLLECTION_NAME)
+      .orderBy('year', 'desc')
+      .limit(1)
+      .get();
+
+    if (productionsSnapshot.empty) {
+      logger.log('No productions found.');
+      return;
+    }
+
+    const productionDoc = productionsSnapshot.docs[0];
+    const production = productionDoc.data();
+    const now = DateTime.now();
 
     // Only run if within the date range
     if (
       !(
-        now >= COLLECTION_MAP[2025].startDate &&
-        now <= COLLECTION_MAP[2025].endDate
+        now >= DateTime.fromISO(production.startDate) &&
+        now <= DateTime.fromISO(production.endDate)
       )
     ) {
       logger.info(
         'Skipping function execution. Out of valid date range.',
-        COLLECTION_MAP[2025].startDate,
-        COLLECTION_MAP[2025].endDate
+        production.startDate,
+        production.endDate
       );
+
       return;
     }
 
+    // Fetch ticket sales from Tickster
     https
-      .get(
-        COLLECTION_MAP[2025].ticksterSalesApiUrl,
-        async (incomingHttpMsg) => {
-          const { statusCode } = incomingHttpMsg;
-          const contentType = incomingHttpMsg.headers['content-type'];
+      .get(production.ticksterSalesApiUrl, async (incomingHttpMsg) => {
+        const { statusCode } = incomingHttpMsg;
+        const contentType = incomingHttpMsg.headers['content-type'];
 
-          let error;
-          // Any 2xx status code signals a successful response but
-          // here we're only checking for 200.
-          if (statusCode !== 200) {
-            error = new Error(
-              'Request Failed.\n' + `Status Code: ${statusCode}`
-            );
-          } else if (!/^application\/json/.test(contentType || '')) {
-            error = new Error(
-              'Invalid content-type.\n' +
-                `Expected application/json but received ${contentType}`
-            );
-          }
-
-          if (error) {
-            logger.error(error.message);
-            // Consume response data to free up memory
-            incomingHttpMsg.resume();
-            return;
-          }
-
-          incomingHttpMsg.setEncoding('utf8');
-          let rawData = '';
-          incomingHttpMsg.on('data', (chunk) => {
-            rawData += chunk;
-          });
-
-          incomingHttpMsg.on('end', async () => {
-            try {
-              const parsedData = JSON.parse(rawData);
-              const showsAndTicketsSold = parsedData
-                .filter(
-                  (data: any) =>
-                    data.name.startsWith(
-                      `${COLLECTION_MAP[2025].name} - Torsdag`
-                    ) ||
-                    data.name.startsWith(
-                      `${COLLECTION_MAP[2025].name} - Fredag`
-                    ) ||
-                    data.name.startsWith(
-                      `${COLLECTION_MAP[2025].name} - Lördag`
-                    ) ||
-                    data.name.startsWith(
-                      `${COLLECTION_MAP[2025].name} - Söndag`
-                    )
-                )
-                .reduce(
-                  (obj: any, data: any) => ({
-                    ...obj,
-                    [data.name.replace(`${COLLECTION_MAP[2025].name} - `, '')]:
-                      data.sales.soldQtyNet,
-                  }),
-                  {}
-                );
-
-              const newCollection = {
-                date: DateTime.now().toFormat('LLL dd'),
-                millis: DateTime.now().toMillis(),
-                ...showsAndTicketsSold,
-              };
-
-              const collectionRef = db.collection(COLLECTION_MAP[2025].name);
-              const snapshot = await collectionRef.get();
-              const previousDoc = snapshot.docs.find(
-                (doc) => doc.data().date === newCollection.date
-              );
-
-              if (previousDoc) {
-                console.log(
-                  await collectionRef
-                    .doc(previousDoc.id)
-                    .update({ ...newCollection })
-                );
-              } else {
-                await collectionRef.add(newCollection);
-              }
-
-              // If calling manually
-              // res.json(newCollection);
-            } catch (error: any) {
-              logger.error(error.message);
-            }
-          });
+        let error;
+        if (statusCode !== 200) {
+          error = new Error(`Request Failed. Status Code: ${statusCode}`);
+        } else if (!/^application\/json/.test(contentType || '')) {
+          error = new Error(
+            `Invalid content-type. Expected application/json but received ${contentType}`
+          );
         }
-      )
-      .on('error', (error) => {
-        logger.error(error.message);
+
+        if (error) {
+          logger.error(error.message);
+          // Consume response data to free up memory
+          incomingHttpMsg.resume();
+          return;
+        }
+
+        incomingHttpMsg.setEncoding('utf8');
+        let rawData = '';
+        incomingHttpMsg.on('data', (chunk) => {
+          rawData += chunk;
+        });
+
+        incomingHttpMsg.on('end', async () => {
+          try {
+            const parsedData = JSON.parse(rawData);
+
+            // Filter and map shows
+            const relevantShows = parsedData.filter((data: any) =>
+              SHOW_DAYS.some(
+                (day) =>
+                  data.name.startsWith(production.name) &&
+                  data.name.includes(day)
+              )
+            );
+
+            const showsAndSales = relevantShows.map(
+              (data: any, index: number) => {
+                const dateTime = DateTime.fromISO(data.startLocal);
+                const dayKey = dateTime.toFormat(
+                  'cccc'
+                ) as keyof typeof DAYS_TRANSLATIONS_ENG_SWE;
+                const label = `${DAYS_TRANSLATIONS_ENG_SWE[dayKey]} ${dateTime.toFormat('HH:mm')}`; // e.g. Fredag 19:00
+
+                return {
+                  ordinal: index,
+                  label,
+                  ticketSales: data.sales.soldQtyNet,
+                };
+              }
+            );
+
+            const totalSales = showsAndSales.reduce(
+              (sum: number, showsAndSales: ShowsAndSalePoint) =>
+                sum + showsAndSales.ticketSales,
+              0
+            );
+
+            // Use date as document ID (YYYY-MM-DD)
+            const docId = DateTime.now().toISODate();
+
+            const ticketSalesRef = db
+              .collection(PRODUCTION_COLLECTION_NAME)
+              .doc(productionDoc.id)
+              .collection(TICKET_SALES_COLLECTION_NAME)
+              .doc(docId);
+
+            await ticketSalesRef.set(
+              {
+                label: DateTime.now().toFormat('LLL dd'),
+                date: DateTime.now().toISODate(),
+                showsAndSales,
+                totalSales,
+              },
+              { merge: true }
+            );
+
+            logger.log(
+              `Ticket sales updated for ${docId} (production ${productionDoc.id})`
+            );
+          } catch (err: any) {
+            logger.error('Failed to parse or write data:', err.message);
+          }
+        });
+      })
+      .on('error', (err) => {
+        logger.error('HTTP request failed:', err.message);
       });
+  } catch (err: any) {
+    logger.error('Unexpected error in scheduled function:', err.message);
   }
-);
-
-// import { onSchedule } from "firebase-functions/v2/scheduler";
-// import * as admin from "firebase-admin";
-// import * as https from "https";
-// import { DateTime } from "luxon";
-
-// const db = admin.firestore();
-
-// const SHOW_ORDER = ["Torsdag", "Fredag", "Lördag", "Söndag"];
-
-// exports.addShowAndTicketsSoldRow = onSchedule(
-//   {
-//     schedule: "every hour from 08:00 to 00:00",
-//     timeZone: "Europe/Stockholm",
-//   },
-//   async () => {
-//     try {
-//       // 1️⃣ Find the latest production by year
-//       const productionsSnapshot = await db
-//         .collection("productions")
-//         .orderBy("year", "desc")
-//         .limit(1)
-//         .get();
-
-//       if (productionsSnapshot.empty) {
-//         console.log("No productions found.");
-//         return;
-//       }
-
-//       const productionDoc = productionsSnapshot.docs[0];
-//       const production = productionDoc.data();
-
-//       const now = new Date();
-
-//       // 2️⃣ Only run if within the date range
-//       if (now < production.startDate.toDate ? production.startDate.toDate() : production.startDate || now ||
-//           now > production.endDate.toDate ? production.endDate.toDate() : production.endDate) {
-//         console.log(
-//           "Skipping function. Out of valid date range.",
-//           production.startDate,
-//           production.endDate
-//         );
-//         return;
-//       }
-
-//       // 3️⃣ Fetch ticket sales from Tickster
-//       https
-//         .get(production.ticksterSalesApiUrl, async (incomingHttpMsg) => {
-//           const { statusCode } = incomingHttpMsg;
-//           const contentType = incomingHttpMsg.headers["content-type"];
-
-//           let error;
-//           if (statusCode !== 200) {
-//             error = new Error(`Request Failed. Status Code: ${statusCode}`);
-//           } else if (!/^application\/json/.test(contentType || "")) {
-//             error = new Error(
-//               `Invalid content-type. Expected application/json but received ${contentType}`
-//             );
-//           }
-
-//           if (error) {
-//             console.error(error.message);
-//             incomingHttpMsg.resume();
-//             return;
-//           }
-
-//           incomingHttpMsg.setEncoding("utf8");
-//           let rawData = "";
-//           incomingHttpMsg.on("data", (chunk) => {
-//             rawData += chunk;
-//           });
-
-//           incomingHttpMsg.on("end", async () => {
-//             try {
-//               const parsedData = JSON.parse(rawData);
-
-//               // 4️⃣ Filter and map shows
-//               const relevantShows = parsedData.filter((data: any) =>
-//                 SHOW_ORDER.some((day) =>
-//                   data.name.startsWith(`${production.name} - ${day}`)
-//                 )
-//               );
-
-//               const showsAndSales = relevantShows.map((data: any, index: number) => ({
-//                 ordinal: index,
-//                 label: data.name.replace(`${production.name} - `, ""),
-//                 ticketSales: data.sales.soldQtyNet,
-//               }));
-
-//               const totalSales = showsAndSales.reduce(
-//                 (sum, s) => sum + s.ticketSales,
-//                 0
-//               );
-
-//               // 5️⃣ Use date as document ID (YYYY-MM-DD)
-//               const docId = DateTime.now().toISODate();
-
-//               const ticketSalesRef = db
-//                 .collection("productions")
-//                 .doc(productionDoc.id)
-//                 .collection("ticketSales")
-//                 .doc(docId);
-
-//               await ticketSalesRef.set(
-//                 {
-//                   date: DateTime.now().toFormat("LLL dd"),
-//                   millis: DateTime.now().toMillis(),
-//                   showsAndSales,
-//                   totalSales,
-//                 },
-//                 { merge: true }
-//               );
-
-//               console.log(`Ticket sales updated for ${docId} (production ${productionDoc.id})`);
-//             } catch (err: any) {
-//               console.error("Failed to parse or write data:", err.message);
-//             }
-//           });
-//         })
-//         .on("error", (err) => {
-//           console.error("HTTP request failed:", err.message);
-//         });
-//     } catch (err: any) {
-//       console.error("Unexpected error in scheduled function:", err.message);
-//     }
-//   }
-// );
+});
 
 //==========================================================//
 //                    Create Production                     //
 //==========================================================//
+// http://127.0.0.1:5001/umespexarna-tickster/europe-west3/createProduction?year=2026&name=Picasso&ticksterSalesApiUrl=https://mobile.tickster.com/?keys=CU14NB&startDate=2026-03-01&endDate=2026-04-27
 exports.createProduction = onRequest(async (req, res) => {
   try {
     const { name, year, ticksterSalesApiUrl, startDate, endDate } =
@@ -427,7 +313,10 @@ exports.createProduction = onRequest(async (req, res) => {
 //==========================================================//
 //==========================================================//
 //==========================================================//
-const SHOW_ORDER = [
+
+// TODO: How to run migrations without a function?
+
+const MIGRATE_SHOW_ORDER = [
   'Torsdag 19:00',
   'Fredag 19:00',
   'Lördag 13:00',
@@ -440,10 +329,11 @@ const PRODUCTION = {
   year: 2025,
   ticksterSalesApiUrl:
     'https://manager.tickster.com/Statistics/SalesTracker/Api.ashx?keys=CEFA5J,4CG8L2',
-  startDate: new Date('2025-02-28T00:00:00+01:00'),
-  endDate: new Date('2025-04-13T23:59:59+02:00'),
+  startDate: '2025-02-28',
+  endDate: '2025-04-13',
 };
 
+// http://127.0.0.1:5001/umespexarna-tickster/europe-west3/migrate2025Collection
 exports.migrate2025Collection = onRequest(async (_req, res) => {
   const oldSnapshot = await db.collection('2025').get();
 
@@ -457,18 +347,21 @@ exports.migrate2025Collection = onRequest(async (_req, res) => {
   oldSnapshot.docs.forEach((doc) => {
     const data = doc.data();
 
-    const showsAndSales = SHOW_ORDER.map((label, index) => ({
+    const showsAndSales = MIGRATE_SHOW_ORDER.map((label, index) => ({
       ordinal: index,
       label,
       ticketSales: data[label] ?? 0,
     }));
 
-    const newDocRef = productionRef.collection('ticketSales').doc(data.date);
+    const newDocRef = productionRef
+      .collection('ticketSales')
+      .doc(DateTime.fromMillis(data.millis).toISODate() as string);
 
     batch.set(newDocRef, {
-      date: data.date,
-      millis: data.millis,
+      label: data.date,
+      date: DateTime.fromMillis(data.millis).toISODate(),
       showsAndSales,
+      totalSales: showsAndSales.reduce((sum, s) => sum + s.ticketSales, 0),
     });
   });
 
