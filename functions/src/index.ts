@@ -28,6 +28,8 @@ const db = getFirestore();
 //==========================================================//
 
 const PRODUCTION_COLLECTION_NAME = 'productions';
+const TICKET_SALES_COLLECTION_NAME = 'ticketSales';
+
 const COLLECTION_MAP = {
   2025: {
     name: 'Alcatraz',
@@ -72,6 +74,8 @@ export interface Production {
   ticksterSalesApiUrl: string; // https://manager.tickster.com...
   startDate: Date; // Fri Feb 28 2025 00:00:00 GMT+0100 (Central European Standard Time)
   endDate: Date; // Fri Feb 28 2025 00:00:00 GMT+0100 (Central European Standard Time)
+
+  // In own collection
   ticketSales: TicketSaleDataPoint[]; // [...]
 }
 
@@ -79,36 +83,47 @@ export interface Production {
 //                       Get Sales                          //
 //==========================================================//
 exports.getSales = onRequest(async (req, res) => {
-  const collectionName = req.query.year?.toString();
+  const year = req.query.year?.toString();
 
-  if (!collectionName) {
-    // No collection name provided (year)
+  if (!year) {
     res
       .status(400)
       .json({ error: 'Missing or invalid "year" query parameter.' });
     return;
   }
 
-  let collectionRef;
-
   try {
-    collectionRef = db.collection(collectionName);
-    const snapshot = await collectionRef.limit(1).get();
+    const productionRef = db.collection(PRODUCTION_COLLECTION_NAME).doc(year);
+    const productionDoc = await productionRef.get();
 
-    if (snapshot.empty) {
-      // Collection does not exist (or is empty)
-      res.status(404).json({ error: 'Collection not found or empty.' });
+    if (!productionDoc.exists) {
+      res.status(404).json({ error: `Production '${year}' not found.` });
       return;
     }
+
+    const ticketSalesSnapshot = await productionRef
+      .collection(TICKET_SALES_COLLECTION_NAME)
+      .orderBy('millis')
+      .get();
+
+    if (ticketSalesSnapshot.empty) {
+      res.status(404).json({ error: 'No ticket sales data found.' });
+      return;
+    }
+
+    const ticketSales = ticketSalesSnapshot.docs.map((doc) => ({
+      id: doc.id, // date
+      ...doc.data(),
+    }));
+
+    res.send({
+      ...productionDoc.data(),
+      ticketSales,
+    });
   } catch (error) {
+    logger.error(error);
     res.status(500).json({ error: 'An unexpected error occurred.' });
-    return;
   }
-
-  const snapshot = await collectionRef.get();
-  const collectionData = snapshot.docs.map((doc) => doc.data());
-
-  res.send(collectionData);
 });
 
 // Manually run the task here https://console.cloud.google.com/cloudscheduler
@@ -236,6 +251,133 @@ exports.addShowAndTicketsSoldRow = onSchedule(
   }
 );
 
+// import { onSchedule } from "firebase-functions/v2/scheduler";
+// import * as admin from "firebase-admin";
+// import * as https from "https";
+// import { DateTime } from "luxon";
+
+// const db = admin.firestore();
+
+// const SHOW_ORDER = ["Torsdag", "Fredag", "Lördag", "Söndag"];
+
+// exports.addShowAndTicketsSoldRow = onSchedule(
+//   {
+//     schedule: "every hour from 08:00 to 00:00",
+//     timeZone: "Europe/Stockholm",
+//   },
+//   async () => {
+//     try {
+//       // 1️⃣ Find the latest production by year
+//       const productionsSnapshot = await db
+//         .collection("productions")
+//         .orderBy("year", "desc")
+//         .limit(1)
+//         .get();
+
+//       if (productionsSnapshot.empty) {
+//         console.log("No productions found.");
+//         return;
+//       }
+
+//       const productionDoc = productionsSnapshot.docs[0];
+//       const production = productionDoc.data();
+
+//       const now = new Date();
+
+//       // 2️⃣ Only run if within the date range
+//       if (now < production.startDate.toDate ? production.startDate.toDate() : production.startDate || now ||
+//           now > production.endDate.toDate ? production.endDate.toDate() : production.endDate) {
+//         console.log(
+//           "Skipping function. Out of valid date range.",
+//           production.startDate,
+//           production.endDate
+//         );
+//         return;
+//       }
+
+//       // 3️⃣ Fetch ticket sales from Tickster
+//       https
+//         .get(production.ticksterSalesApiUrl, async (incomingHttpMsg) => {
+//           const { statusCode } = incomingHttpMsg;
+//           const contentType = incomingHttpMsg.headers["content-type"];
+
+//           let error;
+//           if (statusCode !== 200) {
+//             error = new Error(`Request Failed. Status Code: ${statusCode}`);
+//           } else if (!/^application\/json/.test(contentType || "")) {
+//             error = new Error(
+//               `Invalid content-type. Expected application/json but received ${contentType}`
+//             );
+//           }
+
+//           if (error) {
+//             console.error(error.message);
+//             incomingHttpMsg.resume();
+//             return;
+//           }
+
+//           incomingHttpMsg.setEncoding("utf8");
+//           let rawData = "";
+//           incomingHttpMsg.on("data", (chunk) => {
+//             rawData += chunk;
+//           });
+
+//           incomingHttpMsg.on("end", async () => {
+//             try {
+//               const parsedData = JSON.parse(rawData);
+
+//               // 4️⃣ Filter and map shows
+//               const relevantShows = parsedData.filter((data: any) =>
+//                 SHOW_ORDER.some((day) =>
+//                   data.name.startsWith(`${production.name} - ${day}`)
+//                 )
+//               );
+
+//               const showsAndSales = relevantShows.map((data: any, index: number) => ({
+//                 ordinal: index,
+//                 label: data.name.replace(`${production.name} - `, ""),
+//                 ticketSales: data.sales.soldQtyNet,
+//               }));
+
+//               const totalSales = showsAndSales.reduce(
+//                 (sum, s) => sum + s.ticketSales,
+//                 0
+//               );
+
+//               // 5️⃣ Use date as document ID (YYYY-MM-DD)
+//               const docId = DateTime.now().toISODate();
+
+//               const ticketSalesRef = db
+//                 .collection("productions")
+//                 .doc(productionDoc.id)
+//                 .collection("ticketSales")
+//                 .doc(docId);
+
+//               await ticketSalesRef.set(
+//                 {
+//                   date: DateTime.now().toFormat("LLL dd"),
+//                   millis: DateTime.now().toMillis(),
+//                   showsAndSales,
+//                   totalSales,
+//                 },
+//                 { merge: true }
+//               );
+
+//               console.log(`Ticket sales updated for ${docId} (production ${productionDoc.id})`);
+//             } catch (err: any) {
+//               console.error("Failed to parse or write data:", err.message);
+//             }
+//           });
+//         })
+//         .on("error", (err) => {
+//           console.error("HTTP request failed:", err.message);
+//         });
+//     } catch (err: any) {
+//       console.error("Unexpected error in scheduled function:", err.message);
+//     }
+//   }
+// );
+
 //==========================================================//
 //                    Create Production                     //
 //==========================================================//
@@ -277,7 +419,7 @@ exports.createProduction = onRequest(async (req, res) => {
       production,
     });
   } catch (error) {
-    console.error(error);
+    logger.error(error);
     res.status(500).send('Failed to create production');
   }
 });
@@ -321,7 +463,7 @@ exports.migrate2025Collection = onRequest(async (_req, res) => {
       ticketSales: data[label] ?? 0,
     }));
 
-    const newDocRef = productionRef.collection('ticketSales').doc(doc.id);
+    const newDocRef = productionRef.collection('ticketSales').doc(data.date);
 
     batch.set(newDocRef, {
       date: data.date,
