@@ -40,39 +40,6 @@ const DAYS_TRANSLATIONS_ENG_SWE = {
 };
 
 //==========================================================//
-//==========================================================//
-//==========================================================//
-
-export interface ShowsAndSalePoint {
-  ordinal: number; // 0
-  label: string; // Apr 04
-  ticketSales: number; // 999
-}
-
-export interface TicketSaleDataPoint {
-  label: string; // Apr 04
-  date: string; // 2025-04-04
-  // 'Torsdag 19:00': number,
-  // 'Fredag 19:00': number,
-  // 'Lördag 13:00': number,
-  // 'Lördag 18:00': number,
-  // 'Söndag 15:00': number,
-  showsAndSales: ShowsAndSalePoint[];
-  totalSales: number; // 999
-}
-
-export interface Production {
-  name: string; // Alcatraz
-  year: number; // 2025
-  ticksterSalesApiUrl: string; // https://manager.tickster.com...
-  startDate: Date; // Fri Feb 28 2025 00:00:00 GMT+0100 (Central European Standard Time)
-  endDate: Date; // Fri Feb 28 2025 00:00:00 GMT+0100 (Central European Standard Time)
-
-  // In own collection
-  ticketSales: TicketSaleDataPoint[]; // [...]
-}
-
-//==========================================================//
 //                       Get Sales                          //
 //==========================================================//
 // http://127.0.0.1:5001/umespexarna-tickster/europe-west3/getSales?year=2025
@@ -223,7 +190,7 @@ exports.addShowAndTicketsSoldRow = onRequest(async (_req, _res) => {
             );
 
             const totalSales = showsAndSales.reduce(
-              (sum: number, showsAndSales: ShowsAndSalePoint) =>
+              (sum: number, showsAndSales: any) =>
                 sum + showsAndSales.ticketSales,
               0
             );
