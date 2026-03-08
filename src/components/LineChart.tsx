@@ -602,7 +602,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
     return (
       <div
         ref={ref}
-        className={cx('h-90 w-full', className)}
+        className={cx('h-100 w-full', className)}
         tremor-id="tremor-raw"
         {...other}
       >
@@ -689,7 +689,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
                   position="insideLeft"
                   style={{ textAnchor: 'middle' }}
                   angle={-90}
-                  offset={-15}
+                  offset={5}
                   className="fill-gray-800 text-sm font-medium dark:fill-gray-200"
                 >
                   {yAxisLabel}

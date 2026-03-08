@@ -85,6 +85,7 @@ const Tooltip = ({ payload, active, label }: TooltipProps) => {
 };
 
 export default function Home() {
+  const [showRelativeMax, setRelativeMax] = useState(false);
   const [productions, setProductions] = useState<Production[]>([]);
   const [selectedProduction, setSelectedProduction] = useState<
     Production | undefined
@@ -177,7 +178,7 @@ export default function Home() {
             border
             rounded-md
             w-max
-            dark:bg-[#0a0a0a]
+            dark:bg-[#04030c]
             text-[#ededed]
             dark:border-gray-200/30
             py-3
@@ -207,10 +208,21 @@ export default function Home() {
           categories={categories}
           xAxisLabel="Datum"
           yAxisLabel="Biljetter sålda"
-          maxValue={MAX_NR_SEATS}
+          maxValue={showRelativeMax ? MAX_NR_SEATS : undefined}
           onValueChange={(v) => v}
           customTooltip={Tooltip}
         />
+
+        <div className="w-full flex flex-row justify-center">
+          <label>
+            <input
+              className="mr-2"
+              type="checkbox"
+              onChange={(e) => setRelativeMax(e.target.checked)}
+            />
+            Visa relativt max
+          </label>
+        </div>
       </main>
     </div>
   );

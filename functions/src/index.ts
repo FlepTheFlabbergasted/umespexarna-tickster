@@ -235,7 +235,7 @@ exports.addShowAndTicketsSoldRow = onSchedule(
 //==========================================================//
 //                    Create Production                     //
 //==========================================================//
-// http://127.0.0.1:5001/umespexarna-tickster/europe-west3/createProduction?year=2026&name=Picasso&ticksterSalesApiUrl=https://mobile.tickster.com/?keys=CU14NB&startDate=2026-03-01&endDate=2026-04-27
+// http://127.0.0.1:5001/umespexarna-tickster/europe-west3/createProduction?year=2026&name=Picasso&ticksterSalesApiUrl=https://manager.tickster.com/Statistics/SalesTracker/Api.ashx?keys=CU14NB,CEFA5J&startDate=2026-03-01&endDate=2026-04-27
 exports.createProduction = onRequest(async (req, res) => {
   try {
     const { name, year, ticksterSalesApiUrl, startDate, endDate } =
