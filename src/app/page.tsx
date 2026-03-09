@@ -32,16 +32,14 @@ const Tooltip = ({ payload, active, label }: TooltipProps) => {
 
   return (
     <>
-      <div className="mb-1 w-60 rounded-md border border-gray-500/10 bg-blue-500 px-4 py-1.5 text-sm shadow-md dark:border-gray-200/30 dark:bg-[#040712]">
+      <div className="mb-1 w-60 rounded-md border px-4 py-1.5 text-sm shadow-md border-gray-200/30 bg-[#040712]">
         <p className="flex items-center justify-between">
-          <span className="text-gray-50 dark:text-gray-50">Datum</span>
-          <span className="font-medium text-gray-50 dark:text-gray-50">
-            {label}
-          </span>
+          <span className="text-gray-50">Datum</span>
+          <span className="font-medium text-gray-50">{label}</span>
         </p>
       </div>
 
-      <div className="space-y-1 rounded-md border border-gray-500/10 bg-white px-4 py-2 text-sm shadow-md dark:border-gray-200/30 dark:bg-[#040712]">
+      <div className="space-y-1 rounded-md border px-4 py-2 text-sm shadow-md border-gray-200/30 bg-[#040712]">
         {data.map((item, index) => (
           <div key={index} className="flex items-center space-x-2.5">
             <div className="flex w-full justify-between">
@@ -54,12 +52,8 @@ const Tooltip = ({ payload, active, label }: TooltipProps) => {
               </div>
 
               <div className="flex items-center space-x-1">
-                <span className="font-medium text-gray-900 dark:text-gray-50">
-                  {item.value}
-                </span>
-                <span className="text-gray-500 dark:text-gray-500">
-                  ({item.percentage}&#37;)
-                </span>
+                <span className="font-medium text-gray-50">{item.value}</span>
+                <span className="text-gray-500">({item.percentage}&#37;)</span>
               </div>
             </div>
           </div>
@@ -70,12 +64,8 @@ const Tooltip = ({ payload, active, label }: TooltipProps) => {
             <span className="text-gray-300">Totalt</span>
 
             <div className="flex items-center space-x-1">
-              <span className="font-medium text-gray-900 dark:text-gray-50">
-                {totalValue}
-              </span>
-              <span className="text-gray-500 dark:text-gray-500">
-                ({totalPercentage}&#37;)
-              </span>
+              <span className="font-medium text-gray-50">{totalValue}</span>
+              <span className="text-gray-500">({totalPercentage}&#37;)</span>
             </div>
           </div>
         </div>
@@ -178,9 +168,9 @@ export default function Home() {
             border
             rounded-md
             w-max
-            dark:bg-[#04030c]
+            bg-[#04030c]
             text-[#ededed]
-            dark:border-gray-200/30
+            border-gray-200/30
             py-3
             px-6
             pr-12
