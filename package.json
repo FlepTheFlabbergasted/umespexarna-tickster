@@ -4,7 +4,6 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "dev:emulator": "npm run dev -- --EMULATOR=true",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
