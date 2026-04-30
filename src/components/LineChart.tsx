@@ -327,7 +327,7 @@ const ChartLegend = (
   return (
     <div
       ref={legendRef}
-      style={{ paddingLeft: paddingLeft }}
+      style={{ paddingLeft }}
       className={cx(
         'flex items-center',
         { 'justify-center': legendPosition === 'center' },
@@ -485,7 +485,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>((props, ref) 
     showXAxis = true,
     showYAxis = true,
     showGridLines = true,
-    yAxisWidth = 56,
+    yAxisWidth = 34,
     intervalType = 'equidistantPreserveStart',
     showTooltip = true,
     showLegend = true,
@@ -506,7 +506,7 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>((props, ref) 
     ...other
   } = props;
   const CustomTooltip = customTooltip;
-  const paddingValue = (!showXAxis && !showYAxis) || (startEndOnly && !showYAxis) ? 0 : 20;
+  const paddingValue = (!showXAxis && !showYAxis) || (startEndOnly && !showYAxis) ? 0 : 10;
   const [legendHeight, setLegendHeight] = React.useState(60);
   const [activeDot, setActiveDot] = React.useState<ActiveDot | undefined>(undefined);
   const [activeLegend, setActiveLegend] = React.useState<string | undefined>(undefined);
@@ -586,14 +586,16 @@ const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>((props, ref) 
             <CartesianGrid className={cx('stroke-1 stroke-gray-800')} horizontal={true} vertical={false} />
           ) : null}
           <XAxis
-            padding={{ left: paddingValue, right: paddingValue }}
+            height={50}
+            padding={{ left: 5, right: paddingValue }}
             hide={!showXAxis}
             dataKey={index}
             interval={startEndOnly ? 'preserveStartEnd' : intervalType}
-            tick={{ transform: 'translate(0, 6)' }}
+            tick={{ transform: 'translate(0, 6)', textAnchor: 'start' }}
             ticks={startEndOnly ? [data[0][index], data[data.length - 1][index]] : undefined}
             fill=""
             stroke=""
+            angle={45}
             className={cx(
               // base
               'text-xs',

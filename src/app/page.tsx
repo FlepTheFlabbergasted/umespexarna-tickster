@@ -131,21 +131,22 @@ export default function Home() {
 
   return (
     <div className="flex flex-col items-center justify-center content-center min-h-screen p-3 gap-4 md:p-8 font-[family-name:var(--font-geist-sans)]">
-      <main className="w-full lg:max-w-3/4 flex flex-col gap-[32px] row-start-2 items-center">
-        <div className="relative">
-          <select
-            value={selectedProduction.year}
-            onChange={(e) => {
-              const year = e.target.value;
-              const production = productions.find((p) => p.year.toString() === year);
+      <main className="w-full lg:max-w-3/4 flex flex-col gap-[24px] row-start-2 items-center">
+        <div>
+          <h1 className="text-2xl text-center mb-1.5">Biljetter sålda</h1>
+          <div className="relative">
+            <select
+              value={selectedProduction.year}
+              onChange={(e) => {
+                const year = e.target.value;
+                const production = productions.find((p) => p.year.toString() === year);
 
-              if (production) {
-                setSelectedProduction(production);
-              }
-            }}
-            className="
+                if (production) {
+                  setSelectedProduction(production);
+                }
+              }}
+              className="
             text-xl
-            md:text-2xl
             text-center
             border
             rounded-md
@@ -161,23 +162,26 @@ export default function Home() {
             focus:outline-none
             relative
           "
-          >
-            {productions.map((p) => (
-              <option key={p.year} value={p.year}>
-                Umespexarna {p.year} - {p.name}
-              </option>
-            ))}
-          </select>
+            >
+              {productions.map((p) => (
+                <option key={p.year} value={p.year}>
+                  Umespexarna {p.year} - {p.name}
+                </option>
+              ))}
+            </select>
 
-          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-50 text-sm">▼</span>
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-50 text-sm">
+              ▼
+            </span>
+          </div>
         </div>
 
         <LineChart
           data={chartData || []}
           index="label"
           categories={categories}
-          xAxisLabel="Datum"
-          yAxisLabel="Biljetter sålda"
+          // xAxisLabel="Datum"
+          // yAxisLabel="Biljetter sålda"
           maxValue={showRelativeMax ? MAX_NR_SEATS : undefined}
           onValueChange={(v) => v}
           customTooltip={Tooltip}
