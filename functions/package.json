@@ -5,7 +5,7 @@
     "build": "tsc",
     "build:watch": "tsc --watch",
     "serve": "npm run build -- --watch | firebase emulators:start --only functions,firestore",
-    "serve:import": "npm run serve -- --import=./emulator-data-2025-collection/",
+    "serve:import": "npm run serve -- --import=./firestore-export-2026-04-30/",
     "shell": "npm run build && firebase functions:shell",
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions --debug",

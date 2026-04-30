@@ -25,10 +25,7 @@ const Tooltip = ({ payload, active, label }: TooltipProps) => {
     .removeDuplicates((a, b) => a.category === b.category);
 
   const totalValue = data.reduce((tot, item) => tot + item.value, 0);
-  const totalPercentage = (
-    (totalValue / (MAX_NR_SEATS * NR_SHOWS)) *
-    100
-  ).toFixed(0);
+  const totalPercentage = ((totalValue / (MAX_NR_SEATS * NR_SHOWS)) * 100).toFixed(0);
 
   return (
     <>
@@ -77,9 +74,7 @@ const Tooltip = ({ payload, active, label }: TooltipProps) => {
 export default function Home() {
   const [showRelativeMax, setRelativeMax] = useState(false);
   const [productions, setProductions] = useState<Production[]>([]);
-  const [selectedProduction, setSelectedProduction] = useState<
-    Production | undefined
-  >(undefined);
+  const [selectedProduction, setSelectedProduction] = useState<Production | undefined>(undefined);
 
   useEffect(() => {
     const fetchProductions = async () => {
@@ -94,20 +89,10 @@ export default function Home() {
 
           // Fetch ticketSales for this production
           const ticketSalesSnapshot = await getDocs(
-            query(
-              collection(
-                db,
-                'productions',
-                prod.year.toString(),
-                'ticketSales'
-              ),
-              orderBy('date', 'asc')
-            )
+            query(collection(db, 'productions', prod.year.toString(), 'ticketSales'), orderBy('date', 'asc'))
           );
 
-          prod.ticketSales = ticketSalesSnapshot.docs.map(
-            (doc) => doc.data() as TicketSaleDataPoint
-          );
+          prod.ticketSales = ticketSalesSnapshot.docs.map((doc) => doc.data() as TicketSaleDataPoint);
 
           return prod;
         })
@@ -132,9 +117,7 @@ export default function Home() {
   }
 
   // Extract categories dynamically from selectedProduction.showsAndSales
-  const categories =
-    selectedProduction.ticketSales?.[0].showsAndSales?.map((s) => s.label) ||
-    [];
+  const categories = selectedProduction.ticketSales?.[0].showsAndSales?.map((s) => s.label) || [];
 
   // Transform ticketSales into a format the chart can use
   const chartData = selectedProduction.ticketSales?.map((day) => {
@@ -147,23 +130,22 @@ export default function Home() {
   });
 
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-4 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
+    <div className="flex flex-col items-center justify-center content-center min-h-screen p-3 gap-4 md:p-8 font-[family-name:var(--font-geist-sans)]">
       <main className="w-full lg:max-w-3/4 flex flex-col gap-[32px] row-start-2 items-center">
         <div className="relative">
           <select
             value={selectedProduction.year}
             onChange={(e) => {
               const year = e.target.value;
-              const production = productions.find(
-                (p) => p.year.toString() === year
-              );
+              const production = productions.find((p) => p.year.toString() === year);
 
               if (production) {
                 setSelectedProduction(production);
               }
             }}
             className="
-            text-2xl
+            text-xl
+            md:text-2xl
             text-center
             border
             rounded-md
@@ -172,8 +154,8 @@ export default function Home() {
             text-[#ededed]
             border-gray-200/30
             py-3
-            px-6
-            pr-12
+            px-3
+            pr-6
             appearance-none
             cursor-pointer
             focus:outline-none
@@ -187,9 +169,7 @@ export default function Home() {
             ))}
           </select>
 
-          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-50 text-sm">
-            ▼
-          </span>
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-50 text-sm">▼</span>
         </div>
 
         <LineChart
@@ -205,11 +185,7 @@ export default function Home() {
 
         <div className="w-full flex flex-row justify-center">
           <label>
-            <input
-              className="mr-2"
-              type="checkbox"
-              onChange={(e) => setRelativeMax(e.target.checked)}
-            />
+            <input className="mr-2" type="checkbox" onChange={(e) => setRelativeMax(e.target.checked)} />
             Visa relativt max
           </label>
         </div>
